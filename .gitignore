@@ -1,0 +1,14 @@
+/.idea
+target/
+
+pom.xml.tag
+pom.xml.releaseBackup
+pom.xml.versionsBackup
+pom.xml.next
+dependency-reduced-pom.xml
+
+release.properties
+buildNumber.properties
+
+.mvn/timing.properties
+.mvn/wrapper/maven-wrapper.jar
