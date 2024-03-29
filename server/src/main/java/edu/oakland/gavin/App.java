@@ -5,19 +5,32 @@ import java.net.Socket;
 
 public class App
 {
-    public static void main(String[] args) throws IOException, InterruptedException
+    public static void main(String[] args)
     {
-        Server server = new Server(9999);
-
-        System.out.println("[*] Listening for connections");
-
-        while (true)
+        // using a "try-with-resources" statement to automatically close the MultiThreadedServer
+        try (MultiThreadedServer server = new MultiThreadedServer(9999))
         {
-            Socket client = server.getSocket().accept();
+            Logger.info(String.format("Listening for connections on port %d", server.getPort()));
 
-            server.spawnThreadedConnection(client);
+            while (!server.getSocket().isClosed())
+            {
+                try
+                {
+                    Socket client = server.getSocket().accept();
 
-            System.out.println("[*] Spawned threaded connection");
+                    Logger.info(String.format("New client connected: %s", client));
+
+                    server.handleConnection(client);
+                }
+                catch (IOException e)
+                {
+                    Logger.error(String.format("Error when accepting connection to server: %s", e));
+                }
+            }
+        }
+        catch (IOException e)
+        {
+            Logger.error(String.format("Fatal error in attempting to create server socket: %s", e));
         }
     }
 }
