@@ -1,7 +1,6 @@
 package edu.oakland.gavin;
 
 import java.io.*;
-import java.net.Socket;
 import java.util.Scanner;
 import java.util.ArrayList;
 
@@ -9,57 +8,10 @@ public class App
 {
     public static void main(String[] args)
     {
-        // try-with-resource syntax to automatically close the server socket
-        try (Socket server = new Socket("localhost", 9999))
+        // create client with server connection on port 9999
+        try (Client client = new Client())
         {
-            // spawn socket connection to server on port 9999
-            // server.connect(new InetSocketAddress("127.0.0.1", 9999));
             Logger.success("Connected to server");
-
-            // attempt to get data input stream from server, quitting if unsuccessful
-            final DataInputStream dataInputStream;
-            try
-            {
-                dataInputStream = new DataInputStream(server.getInputStream());
-            }
-            catch (IOException e)
-            {
-                Logger.error(String.format("Failed to get data input stream from server: %s", e));
-
-                try
-                {
-                    server.close();
-                }
-                catch (IOException e2)
-                {
-                    Logger.error("Failed to close one or more streams, connections, and/or buffers");
-                }
-
-                return;
-            }
-
-            // attempt to get data input stream from server, quitting if unsuccessful
-            final DataOutputStream dataOutputStream;
-            try
-            {
-                dataOutputStream = new DataOutputStream(server.getOutputStream());
-            }
-            catch (IOException e)
-            {
-                Logger.error(String.format("Failed to get data output stream from server: %s", e));
-
-                try
-                {
-                    dataInputStream.close();
-                    server.close();
-                }
-                catch (IOException e2)
-                {
-                    Logger.error("Failed to close one or more streams, connections, and/or buffers");
-                }
-
-                return;
-            }
 
             ArrayList<Integer> activeRoomNumbers = new ArrayList<>();
             ArrayList<Integer> roomSizes = new ArrayList<>();
@@ -69,15 +21,18 @@ public class App
             {
                 try
                 {
-                    int roomNumber = dataInputStream.readInt();
+                    int roomNumber = client.readInteger();
 
+                    // if we get -1, there are no more rooms, don't try to read room size
                     if (roomNumber == -1)
                     {
                         break;
                     }
                     else
                     {
-                        int roomSize = dataInputStream.readInt();
+                        // otherwise, read how many other users are in the room and record it
+
+                        int roomSize = client.readInteger();
 
                         activeRoomNumbers.add(roomNumber);
                         roomSizes.add(roomSize);
@@ -108,16 +63,15 @@ public class App
             Scanner scanner = new Scanner(System.in);
 
             // keep asking the user which room to join until they give a positive valid room number
-            int targetRoom = -1;
-            while (targetRoom < 0)
+            while (!client.hasJoinedRoom())
             {
                 System.out.print("\nEnter any room number to join (positive integers only): ");
 
                 try
                 {
-                    targetRoom = Integer.parseInt(scanner.nextLine());
+                    client.joinRoom(Integer.parseInt(scanner.nextLine()));
 
-                    if (targetRoom < 0)
+                    if (!client.hasJoinedRoom())
                     {
                         Logger.warning("Please input a valid room number (positive integers only)");
                         continue;
@@ -133,26 +87,26 @@ public class App
             // try sending the room number to the server
             try
             {
-                dataOutputStream.writeInt(targetRoom);
+                client.sendInteger(client.getJoinedRoomNumber());
             }
             catch (IOException e)
             {
-                Logger.error(String.format("Failed to send the room number to server: %d", targetRoom));
+                Logger.error(String.format("Failed to send the room number to server: %d", client.getJoinedRoomNumber()));
 
                 return;
             }
 
-            Logger.success(String.format("\nJoined room %d\n", targetRoom));
+            Logger.success(String.format("\nJoined room %d\n", client.getJoinedRoomNumber()));
 
             // spawning thread to simultaneously receive messages as well as send them
             new Thread(() -> {
-                while (!server.isClosed())
+                while (!client.getSocket().isClosed())
                 {
                     // try to read messages from the server and print them
                     String message;
                     try
                     {
-                        message = dataInputStream.readUTF();
+                        message = client.readMessage();
                         Logger.info(String.format("Received message: \"%s\"", message));
                     }
                     catch (IOException e)
@@ -161,9 +115,7 @@ public class App
 
                         try
                         {
-                            dataInputStream.close();
-                            dataOutputStream.close();
-                            server.close();
+                            client.close();
                         }
                         catch (IOException e2)
                         {
@@ -178,7 +130,7 @@ public class App
             Logger.info("Type a message and press enter to send it in the room. Or type \"quit\" to quit the application");
 
             // getting input from user until the connection with the server closes
-            while (!server.isClosed())
+            while (!client.getSocket().isClosed())
             {
                 String message = scanner.nextLine();
 
@@ -189,7 +141,7 @@ public class App
 
                 try
                 {
-                    dataOutputStream.writeUTF(message);
+                    client.sendMessage(message);
                 }
                 catch (IOException e)
                 {
@@ -200,22 +152,10 @@ public class App
             }
 
             Logger.info("Disconnected from server");
-
-            // closing all streams, connections, and buffers
-            try
-            {
-                dataInputStream.close();
-                dataOutputStream.close();
-                server.close();
-            }
-            catch (IOException e)
-            {
-                Logger.error("Failed to close one or more streams, connections, and/or buffers");
-            }
         }
         catch (IOException e)
         {
-            Logger.error("Failed to connect to server");
+            Logger.error("Failed to instantiate or destroy client object");
         }
     }
 }
