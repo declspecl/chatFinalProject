@@ -12,6 +12,7 @@ public class App
         {
             Logger.info(String.format("Listening for connections on port %d", server.getPort()));
 
+            // keep accepting new connections from clients until the server closes
             while (!server.getSocket().isClosed())
             {
                 try

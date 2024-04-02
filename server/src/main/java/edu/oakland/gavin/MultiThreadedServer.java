@@ -1,13 +1,11 @@
 package edu.oakland.gavin;
 
 import java.io.*;
+import java.util.Set;
 import java.net.Socket;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.net.ServerSocket;
-import java.util.Random;
-import java.util.Set;
-import java.util.random.RandomGenerator;
 
 public class MultiThreadedServer implements AutoCloseable
 {
@@ -104,19 +102,17 @@ public class MultiThreadedServer implements AutoCloseable
             // getting all the room numbers that have one or more clients connected
             final Set<Integer> activeRoomNumbers = this.roomToConnectionsMap.keySet();
 
-            System.out.println(activeRoomNumbers);
-
-            // send each of these room numbers to the client
+            // send each of these room numbers to the client as well as how many clients are in each
             for (int roomNumber : activeRoomNumbers)
             {
-                System.out.printf("%d\n", roomNumber);
                 try
                 {
                     dataOutputStream.writeInt(roomNumber);
+                    dataOutputStream.writeInt(this.roomToConnectionsMap.get(roomNumber).size());
                 }
                 catch (IOException e)
                 {
-                    Logger.error(String.format("Failed to send room number %d to client", roomNumber));
+                    Logger.error(String.format("Failed to send room number and/or size of room %d to client", roomNumber));
                     return;
                 }
             }
@@ -132,6 +128,7 @@ public class MultiThreadedServer implements AutoCloseable
                 return;
             }
 
+            // read what room number the client wants to join
             int clientTargetRoomNumber;
             try
             {
@@ -158,7 +155,7 @@ public class MultiThreadedServer implements AutoCloseable
                 catch (Exception e)
                 {
                     Logger.error(String.format("Failed to read message from client %s", client));
-                    continue;
+                    break;
                 }
 
                 Logger.success(String.format("Message received from %s in room %d: %s", client, clientTargetRoomNumber, message));
@@ -178,6 +175,7 @@ public class MultiThreadedServer implements AutoCloseable
                     catch (IOException e)
                     {
                         Logger.error(String.format("Failed to send message to connection %s", connection));
+                        continue;
                     }
                 }
             }
