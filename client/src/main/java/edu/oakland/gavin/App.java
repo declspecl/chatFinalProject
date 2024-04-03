@@ -99,7 +99,8 @@ public class App
             Logger.success(String.format("\nJoined room %d\n", client.getJoinedRoomNumber()));
 
             // spawning thread to simultaneously receive messages as well as send them
-            new Thread(() -> {
+            new Thread(() ->
+            {
                 while (!client.getSocket().isClosed())
                 {
                     // try to read messages from the server and print them

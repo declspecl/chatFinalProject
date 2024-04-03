@@ -163,7 +163,7 @@ public class MultiThreadedServer implements AutoCloseable
                 // send the received message to every other client in the same room
                 for (Socket connection : this.roomToConnectionsMap.get(clientTargetRoomNumber))
                 {
-                    // we don't want to send the message to the client who sent it, so skip it if its the case
+                    // we don't want to send the message to the client who sent it, so skip it if it's the case
                     if (client == connection) continue;
 
                     // try to send message to all other clients
